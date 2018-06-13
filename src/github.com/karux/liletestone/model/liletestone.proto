@@ -1,0 +1,15 @@
+syntax = "proto3";
+option go_package = "github.com/karux/liletestone";
+package liletestone;
+
+message GetRequest {
+  string id = 1;
+}
+
+message GetResponse {
+  string id = 1;
+}
+
+service Liletestone {
+  rpc Get(GetRequest) returns (GetResponse) {}
+}
