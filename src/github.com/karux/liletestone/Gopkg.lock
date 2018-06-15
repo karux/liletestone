@@ -46,6 +46,12 @@
   revision = "31879d3884b90dd94c44c85c0e4f1aff3bbb90e2"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/dustin/go-humanize"
+  packages = ["."]
+  revision = "02af3965c54e8cacf948b97fef38925c4120652c"
+
+[[projects]]
   name = "github.com/eapache/go-resiliency"
   packages = ["breaker"]
   revision = "ea41b0fad31007accc7f806884dcdf3da98b79ce"
@@ -148,6 +154,15 @@
   version = "1.0.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/karux/go-utils"
+  packages = [
+    ".",
+    "security"
+  ]
+  revision = "09295b467d1194cce8b6efa94e6d360913a4faaa"
+
+[[projects]]
   name = "github.com/kelseyhightower/envconfig"
   packages = ["."]
   revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
@@ -196,6 +211,12 @@
   packages = ["pbutil"]
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
 
 [[projects]]
   branch = "v2"
@@ -348,6 +369,31 @@
   ]
   revision = "5897c5ce32247fc8af19c7710abd96e3304fb43c"
   version = "v0.12.0"
+
+[[projects]]
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
+
+[[projects]]
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "go.uber.org/zap"
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore"
+  ]
+  revision = "eeedf312bc6c57391d84767a4cd413f02a917974"
+  version = "v1.8.0"
 
 [[projects]]
   branch = "master"
@@ -508,6 +554,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "051dfaa55f44413c0db3d8d71dd7e5fdc3f2e3ed6788ef1efc7dc037918ad2d6"
+  inputs-digest = "0c1c1cd70088c54b567fa4fce46152287697637a3df9343b527b974c3918e60f"
   solver-name = "gps-cdcl"
   solver-version = 1
