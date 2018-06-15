@@ -1,22 +1,24 @@
 package liletestone
 
 import (
+	"fmt"
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-//	"github.com/grpc-ecosystem/go-grpc-middleware/tags/logrus"
-	"github.com/sirupsen/logrus"
+	//	"github.com/grpc-ecosystem/go-grpc-middleware/tags/logrus"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/karux/go-utils/security"
 	"github.com/lileio/lile"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/sirupsen/logrus"
 	oauth "google.golang.org/grpc/credentials/oauth"
-	oauth2 "golang.org/x/oauth2"
 
-	"google.golang.org/grpc"
 	"log"
 	"sync"
 	"time"
-	"google.golang.org/grpc/codes"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -33,8 +35,6 @@ func customClientCodeToLevel(c codes.Code) logrus.Level {
 	return level
 }
 
-
-
 func GetLiletestoneClient() LiletestoneClient {
 	cm.Lock()
 	defer cm.Unlock()
@@ -45,45 +45,53 @@ func GetLiletestoneClient() LiletestoneClient {
 
 	serviceURL := lile.URLForService("liletestone")
 
-
-	opts := []grpc_logrus.Option{
-		grpc_logrus.WithLevels(customClientCodeToLevel),
-	}
-	cred := oauth.NewOauthAccess(&oauth2.Token{
-		AccessToken: "eyo444blurbJwtst",
-		TokenType:   "Bearer",
-	})
-
-
-	duration, _ := time.ParseDuration("3s")
-	dOpts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithTimeout(duration),
-	}
-	dOpts = append(dOpts, grpc.WithPerRPCCredentials(cred))
-
+	//TODO: CONFIGURE CIRCUIT BREAKER
 
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{DisableTimestamp: false}
-/*
-grpc_ctxtags.Extract(ctx).Set("custom_tags.string", "something").Set("custom_tags.int", 1337)
-// Extract a single request-scoped logrus.Logger and log messages.
-l := ctx_logrus.Extract(ctx)
+	logOpts := []grpc_logrus.Option{
+		grpc_logrus.WithLevels(customClientCodeToLevel),
+	}
 
-*/
-	// We don't need to error here, as this creates a pool and connections
-	// will happen later
-	conn, err := grpc.Dial(
-		serviceURL,
+	// client connection timeout
+	//TODO: retrieve from config, push down into circuit breaker?
+	duration, _ := time.ParseDuration("3s")
+
+	// CONFIGURE AUTHORIZATION TOKEN INTERCEPTOR
+	//TODO: do we need NewOauthAccess??
+	cred := oauth.NewOauthAccess(security.FetchClientToken(security.UserCredentials{}))
+	fmt.Println("creds", cred)
+	tlsCreds := security.GetClientTLSCreds()
+
+	dOpts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithTimeout(duration),
 		grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(cred),
+		grpc.WithTransportCredentials(tlsCreds),
 		grpc.WithUnaryInterceptor(
 			grpc_middleware.ChainUnaryClient(
 				lile.ContextClientInterceptor(),
 				otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
-				grpc_logrus.UnaryClientInterceptor(logrus.NewEntry(logger), opts...),
-
+				grpc_logrus.UnaryClientInterceptor(logrus.NewEntry(logger), logOpts...),
 			),
-		))
+		),
+	}
+	//dOpts = append(dOpts, grpc.WithPerRPCCredentials(cred))
+
+	/*
+	   grpc_ctxtags.Extract(ctx).Set("custom_tags.string", "something").Set("custom_tags.int", 1337)
+	   // Extract a single request-scoped logrus.Logger and log messages.
+	   l := ctx_logrus.Extract(ctx)
+
+	*/
+
+	// We don't need to error here, as this creates a pool and connections
+	// will happen later
+	conn, err := grpc.Dial(
+		serviceURL,
+		dOpts...,
+	)
 
 	if err != nil {
 		log.Println("GetLiletestoneClient error ", err, "to serviceURL", serviceURL)

@@ -19,6 +19,8 @@ var upCmd = &cobra.Command{
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 		go func() {
+
+			//TODO: bootstrap secrets and service credentials  .
 			lile.Run()
 		}()
 		go func() {

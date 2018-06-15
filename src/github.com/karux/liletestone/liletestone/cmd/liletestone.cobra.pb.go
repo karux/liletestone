@@ -14,33 +14,61 @@ It has these top-level commands:
 
 package cmd
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-
 import (
+	fmt "fmt"
+
+	proto "github.com/golang/protobuf/proto"
+	opentracing "github.com/opentracing/opentracing-go"
+
+	math "math"
 
 	"github.com/karux/liletestone"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+
+	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
+	"github.com/lileio/lile"
+	"github.com/sirupsen/logrus"
 	cobra "github.com/spf13/cobra"
+
 	context "golang.org/x/net/context"
+
+	"google.golang.org/grpc/codes"
 	credentials "google.golang.org/grpc/credentials"
+
 	tls "crypto/tls"
+
 	pflag "github.com/spf13/pflag"
+
 	x509 "crypto/x509"
+
 	envconfig "github.com/kelseyhightower/envconfig"
+
 	grpc "google.golang.org/grpc"
+
 	io "io"
+
 	ioutil "io/ioutil"
+
 	oauth2 "golang.org/x/oauth2"
+
 	filepath "path/filepath"
+
 	iocodec "github.com/fiorix/protoc-gen-cobra/iocodec"
+
 	json "encoding/json"
+
 	net "net"
+
 	oauth "google.golang.org/grpc/credentials/oauth"
+
 	log "log"
+
 	os "os"
+
 	template "text/template"
+
 	time "time"
 )
 
@@ -89,12 +117,12 @@ type _LiletestoneClientCommandConfig struct {
 	PrintSampleRequest bool          `envconfig:"PRINT_SAMPLE_REQUEST"`
 	ResponseFormat     string        `envconfig:"RESPONSE_FORMAT" default:"json"`
 	Timeout            time.Duration `envconfig:"TIMEOUT" default:"10s"`
-	TLS                bool          `envconfig:"TLS"`
+	TLS                bool          `envconfig:"TLS" ` //default:"true"
 	ServerName         string        `envconfig:"TLS_SERVER_NAME"`
 	InsecureSkipVerify bool          `envconfig:"TLS_INSECURE_SKIP_VERIFY"`
 	CACertFile         string        `envconfig:"TLS_CA_CERT_FILE"`
-	CertFile           string        `envconfig:"TLS_CERT_FILE"`
-	KeyFile            string        `envconfig:"TLS_KEY_FILE"`
+	CertFile           string        `envconfig:"TLS_CERT_FILE" default:"./keystore/server/server-cert.pem"`
+	KeyFile            string        `envconfig:"TLS_KEY_FILE" default:"./keystore/server/server-key.pem" `
 	AuthToken          string        `envconfig:"AUTH_TOKEN"`
 	AuthTokenType      string        `envconfig:"AUTH_TOKEN_TYPE" default:"Bearer"`
 	JWTKey             string        `envconfig:"JWT_KEY"`
@@ -129,13 +157,42 @@ var LiletestoneClientCommand = &cobra.Command{
 	Use: "liletestone",
 }
 
+func customClientCodeToLevel(c codes.Code) logrus.Level {
+	if c == codes.Unauthenticated {
+		// Make this a special case for tests, and an error.
+		return logrus.ErrorLevel
+	}
+	level := grpc_logrus.DefaultClientCodeToLevel(c)
+	return level
+}
+
 func _DialLiletestone() (*grpc.ClientConn, liletestone.LiletestoneClient, error) {
 	log.Println("in _DialLiletestone")
+
+	logger := logrus.New()
+	logger.Formatter = &logrus.JSONFormatter{DisableTimestamp: false}
+	logOpts := []grpc_logrus.Option{
+		grpc_logrus.WithLevels(customClientCodeToLevel),
+	}
+
+	//	cred := oauth.NewOauthAccess(security.FetchClientToken(security.UserCredentials{}))
+	//	tlsCreds := security.GetClientTLSCreds()
+
 	cfg := _DefaultLiletestoneClientCommandConfig
 	opts := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithTimeout(cfg.Timeout),
+		//grpc.WithPerRPCCredentials(cred),
+		//	grpc.WithTransportCredentials(tlsCreds),
+		grpc.WithUnaryInterceptor(
+			grpc_middleware.ChainUnaryClient(
+				lile.ContextClientInterceptor(),
+				otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
+				grpc_logrus.UnaryClientInterceptor(logrus.NewEntry(logger), logOpts...),
+			),
+		),
 	}
+
 	if cfg.TLS {
 		tlsConfig := &tls.Config{}
 		if cfg.InsecureSkipVerify {
@@ -154,6 +211,7 @@ func _DialLiletestone() (*grpc.ClientConn, liletestone.LiletestoneClient, error)
 			if cfg.KeyFile == "" {
 				return nil, nil, fmt.Errorf("missing key file")
 			}
+			fmt.Println("load x509")
 			pair, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
 			if err != nil {
 				return nil, nil, fmt.Errorf("cert/key: %v", err)
@@ -169,7 +227,9 @@ func _DialLiletestone() (*grpc.ClientConn, liletestone.LiletestoneClient, error)
 		//tlsConfig.BuildNameToCertificate()
 		cred := credentials.NewTLS(tlsConfig)
 		opts = append(opts, grpc.WithTransportCredentials(cred))
+		fmt.Println("log with transport credentials")
 	} else {
+		fmt.Println("Log with Insecure")
 		opts = append(opts, grpc.WithInsecure())
 	}
 	if cfg.AuthToken != "" {
@@ -194,8 +254,8 @@ func _DialLiletestone() (*grpc.ClientConn, liletestone.LiletestoneClient, error)
 		opts = append(opts, grpc.WithPerRPCCredentials(cred))
 	}
 
-//  log.Print("about to dial")
-	//log.Print("serverAddr:",cfg.ServerAddr)
+	log.Print("about to dial")
+	log.Print("serverAddr:", cfg.ServerAddr)
 	conn, err := grpc.Dial(cfg.ServerAddr, opts...)
 	if err != nil {
 		return nil, nil, err
@@ -247,7 +307,7 @@ func _LiletestoneRoundTrip(sample interface{}, fn _LiletestoneRoundTripFunc) err
 
 		d = dm.NewDecoder(f)
 	}
-//	log.Println("call dial...")
+	//	log.Println("call dial...")
 	conn, client, err := _DialLiletestone()
 	if err != nil {
 		return err
@@ -286,7 +346,7 @@ Authenticate using the Authorization header (requires transport security):
 			if err != nil {
 				return err
 			}
-		  log.Println("server response:",resp)
+			log.Println("server response:", resp)
 			return out.Encode(resp)
 
 		})
