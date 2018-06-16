@@ -5,6 +5,9 @@
 *.so
 *.dylib
 
+src/github.com/karux/go-utils/*
+**.DS_Store
+
 # Test binary, build with `go test -c`
 *.test
 
