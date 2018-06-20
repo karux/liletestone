@@ -26,8 +26,15 @@ echo -e "vgo vendoring tool"
 go get -u golang.org/x/vgo
 echo -e "dep vendoring tool"
 go get -u github.com/golang/dep/cmd/dep
+
+echo -e "get grpc performance test tool\n"
+go get -u github.com/bojand/grpcannon
+
+
+
 echo -e "installed tool listing\n"
 ls ${GOBIN}
+
 
 ## PRINT NEXT STEP TO USER
 echo -e "\n\nCopy model.proto file into the /model subdirectory\n"

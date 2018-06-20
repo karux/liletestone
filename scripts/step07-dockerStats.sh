@@ -1,0 +1,1 @@
+docker stats $1

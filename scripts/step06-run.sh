@@ -1,1 +1,1 @@
-./bin/main up
+./bin/liletestone-${GOOS} up

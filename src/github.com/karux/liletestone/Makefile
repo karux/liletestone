@@ -13,8 +13,8 @@ client:
 
 build: proto
 #	go build -o build/karux/liletestone karux/liletestone/liletestone/main.go
-	go build -i -o ${GOBIN}/liletestone ./liletestone/main.go
-#	go build -i -o ${GOBIN}/liletestoneClient ./liletestone.cobra.pb.go
+	go build -i -o ${GOBIN}/liletestone-${GOOS} ./liletestone/main.go
+#	go build -i -o ${GOBIN}/liletestoneClient-${GOOS} ./liletestone.cobra.pb.go
 
 test:
 	@go get github.com/rakyll/gotest

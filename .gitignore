@@ -5,8 +5,10 @@
 *.so
 *.dylib
 
-*/vendor/*
-*/tooling/*
+**/vendor/*
+**/tooling/*
+**/pkg/*
+**/bin/*
 
 .DS_Store
 

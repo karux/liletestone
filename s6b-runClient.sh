@@ -1,1 +1,1 @@
-./bin/liletestone get -f req.json
+./bin/liletestone-${GOOS} get -f req.json

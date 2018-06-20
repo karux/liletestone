@@ -19,7 +19,7 @@ fi
 
 cd ./src/github.com/$1/$2
 ls -al
-export GOOS=darwin
+export GOOS=linux
 export GOARCH=amd64
 make build
 #go install
